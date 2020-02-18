@@ -32,7 +32,7 @@ public class DAOEmpleado
      * @param token
      * @return
      */
-    public Empleado get(long id,
+    public Empleado get(String numeroEmpleado,
                         String token)
     {
         return null;
