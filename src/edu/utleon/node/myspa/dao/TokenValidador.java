@@ -23,8 +23,7 @@ public class TokenValidador
 
     BDConection conexion = new BDConection();
 
-    public final boolean validarToken(String token,
-                                      long idUsuario)
+    public final boolean validarToken(String token)
     {
         boolean output;
         Connection con = conexion.getConexion();
@@ -32,10 +31,9 @@ public class TokenValidador
         try
         {
             
-            String sql = "Select token from usuario where idUsuario=? and token=?";
+            String sql = "Select token from usuario where token=?";
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setLong(1, idUsuario);
-            stmt.setString(2, token);
+            stmt.setString(1, token);
             
             ResultSet result = stmt.executeQuery();
             

@@ -6,12 +6,14 @@
 package edu.utleon.node.myspa.dao;
 
 import edu.softech.MySpa.modelo.Empleado;
+import edu.softech.MySpa.modelo.Usuario;
 import edu.utleon.node.myspa.utilities.BDConection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,15 +25,107 @@ public class DAOEmpleado
 
     BDConection conexion = new BDConection();
 
+    /**
+     * No funciona porque no tiene utilidad
+     * 
+     * @param id
+     * @param token
+     * @return 
+     */
     public Empleado get(long id,
                         String token)
     {
         return null;
     }
 
+    /**
+     * Método de para obtener el listado de todos los empleado Recibe las
+     * licencias de Usuario (token, idUsuario)
+     *
+     * @param token
+     * @param idUsuario
+     * @return
+     */
     public List<Empleado> getAll(String token)
     {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        List<Empleado> empleados = new ArrayList<>();
+        Connection con = conexion.getConexion();
+
+        boolean revisionUsuario;
+        // comprueba token
+        revisionUsuario = new TokenValidador().validarToken(token);
+        if (!revisionUsuario)
+            return null;
+
+        String sql = "select * from vw_empleado";
+
+        PreparedStatement stmt;
+        ResultSet result;
+
+        try
+        {
+            con.setAutoCommit(false);
+
+            stmt = con.prepareStatement(sql);
+            result = stmt.executeQuery();
+
+            while (result.next())
+            {
+                Empleado e = new Empleado();
+
+                e.setIdEmpleado(result.getInt("idEmpleado"));
+                e.setNumeroEmpleado(result.getString("numeroEmpleado"));
+                e.setPuesto(result.getString("puesto"));
+                e.setEstatus(result.getInt("estatus"));
+                e.setFoto(result.getString("foto"));
+
+                e.setIdPersona(result.getInt("idPersona"));
+                e.setNombre(result.getString("nombre"));
+                e.setApellidoPaterno(result.getString("apellidoPaterno"));
+                e.setApellidoMaterno(result.getString("apellidoMaterno"));
+                e.setGenero(result.getString("genero"));
+                e.setDomicilio(result.getString("domicilio"));
+                e.setTelefono(result.getString("telefono"));
+                e.setRfc(result.getString("rfc"));
+
+                Usuario u = new Usuario();
+                u.setIdUsuario(result.getInt("idUsuario"));
+                u.setNombreUsuario(result.getString("nombreUsuario"));
+                // u.setContrasenia(result.getString("contrasenia"));
+                u.setRol(result.getString("rol"));
+
+                // agrega el usuario a empleado
+                e.setUsuario(u);
+
+                // agrega el empleado a la lista
+                empleados.add(e);
+            }
+        }
+        catch (SQLException sqle1)
+        {
+            sqle1.printStackTrace();
+            try
+            {
+                con.close();
+            }
+            catch (Exception sqle2)
+            {
+                sqle2.printStackTrace();
+            }
+        }
+        finally
+        {
+            try
+            {
+                con.setAutoCommit(true);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+        
+        return empleados;
     }
 
     public boolean save(Empleado e,
@@ -40,8 +134,7 @@ public class DAOEmpleado
         boolean output;
 
         //comprueba el token
-        output = new TokenValidador().validarToken(e.getUsuario().getToken(),
-                e.getUsuario().getIdUsuario());
+        output = new TokenValidador().validarToken(token);
         if (!output)
             return false;
 
@@ -148,10 +241,75 @@ public class DAOEmpleado
         return output;
     }
 
-    public void update(Empleado t,
+    public boolean update(Empleado t,
                        String token)
     {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        boolean output;
+
+        //comprueba el token
+        output = new TokenValidador().validarToken(token);
+        if (!output)
+            return false;
+
+        // inicia proceso de ejecutar transacciones
+        Connection con = conexion.getConexion();
+
+        try
+        {
+            con.setAutoCommit(false);
+
+            String sqlPersona = "update set "
+                    + "nombre = ?, "
+                    + "apellidoPaterno = ?, "
+                    + "apellidoMaterno = ?, "
+                    + "genero = ?, "
+                    + "domiclio = ?, "
+                    + "telefono = ?,"
+                    + "rfc = ? "
+                    + "where idPersona = ?";
+            
+            String sqlUsuario = "update set "
+                    + "";
+
+            // statements for last_insert_id
+            PreparedStatement psl1 = con.prepareStatement(lastId);
+            PreparedStatement psl2 = con.prepareStatement(lastId);
+            PreparedStatement psl3 = con.prepareStatement(lastId);
+            // resultset de last_insert_id
+            ResultSet r1;
+            ResultSet r2;
+            ResultSet r3;
+
+            con.commit();
+            output = true;
+        }
+        catch (SQLException sqle)
+        {
+            sqle.printStackTrace();
+            output = false;
+            try
+            {
+                con.rollback();
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+        finally
+        {
+            try
+            {
+                con.setAutoCommit(true);
+                con.close();
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+
+        return output;
     }
 
     public void delete(long id,
@@ -160,4 +318,13 @@ public class DAOEmpleado
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    
+    public static void main(String[] args)
+    {
+        DAOEmpleado dao = new DAOEmpleado();
+        
+        List<Empleado> lista = dao.getAll("1");
+        
+        System.out.println(lista.toString());
+    }
 }
