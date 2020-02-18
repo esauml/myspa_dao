@@ -27,10 +27,10 @@ public class DAOEmpleado
 
     /**
      * No funciona porque no tiene utilidad
-     * 
+     *
      * @param id
      * @param token
-     * @return 
+     * @return
      */
     public Empleado get(long id,
                         String token)
@@ -124,7 +124,7 @@ public class DAOEmpleado
                 e.printStackTrace();
             }
         }
-        
+
         return empleados;
     }
 
@@ -149,7 +149,7 @@ public class DAOEmpleado
         {
             con.setAutoCommit(false);
 
-            String lastId = "select last_insert_id()";
+            String lastId = "select last_insert_id() as id";
 
             // statements for last_insert_id
             PreparedStatement psl1 = con.prepareStatement(lastId);
@@ -178,8 +178,10 @@ public class DAOEmpleado
             ps1.setString(7, e.getRfc());
 
             ps1.executeUpdate();
+            
+            
             r1 = psl1.executeQuery();
-            idPersona = r1.getInt(1);
+            idPersona = r1.getInt("id");
 
             // usuario
             String sql2 = "insert into usuario(nombreUsuario,"
@@ -241,9 +243,10 @@ public class DAOEmpleado
         return output;
     }
 
-    public boolean update(Empleado t,
-                       String token)
+    public boolean update(Empleado empleado,
+                          String token)
     {
+        // variable que valida la sesión y se hicieron las actualizaciones
         boolean output;
 
         //comprueba el token
@@ -258,7 +261,7 @@ public class DAOEmpleado
         {
             con.setAutoCommit(false);
 
-            String sqlPersona = "update set "
+            String sqlPersona = "update Persona set "
                     + "nombre = ?, "
                     + "apellidoPaterno = ?, "
                     + "apellidoMaterno = ?, "
@@ -267,21 +270,48 @@ public class DAOEmpleado
                     + "telefono = ?,"
                     + "rfc = ? "
                     + "where idPersona = ?";
-            
-            String sqlUsuario = "update set "
-                    + "";
+
+            String sqlUsuario = "update Usuario set "
+                    + "rol = ?"
+                    + "where idUsuario=?";
+
+            String sqlEmpleado = "update Empleado set "
+                    + "puesto = ?, "
+                    + "foto = ? "
+                    + "where numeroEmpleado=?";
 
             // statements for last_insert_id
-            PreparedStatement psl1 = con.prepareStatement(lastId);
-            PreparedStatement psl2 = con.prepareStatement(lastId);
-            PreparedStatement psl3 = con.prepareStatement(lastId);
-            // resultset de last_insert_id
-            ResultSet r1;
-            ResultSet r2;
-            ResultSet r3;
+            PreparedStatement ps1 = con.prepareStatement(sqlPersona);
+            PreparedStatement ps2 = con.prepareStatement(sqlUsuario);
+            PreparedStatement ps3 = con.prepareStatement(sqlEmpleado);
 
-            con.commit();
-            output = true;
+            // set de parámetros anónimos en el sql para Persona
+            ps1.setString(1, empleado.getNombre());
+            ps1.setString(2, empleado.getApellidoPaterno());
+            ps1.setString(3, empleado.getApellidoMaterno());
+            ps1.setString(4, empleado.getGenero());
+            ps1.setString(5, empleado.getDomicilio());
+            ps1.setString(6, empleado.getTelefono());
+            ps1.setString(7, empleado.getRfc());
+            // referencia a la persona que se intenta actualizar
+            ps1.setString(8, empleado.getNumeroEmpleado());
+
+            // set de parámetros anónimos para el sql de Usuario
+            ps2.setString(1, empleado.getUsuario().getRol());
+            // referencia al usuario que se intenta actualizar
+            ps2.setInt(2, empleado.getUsuario().getIdUsuario());
+
+            // set de parámetros anónimos para el sql de Empleado
+            ps3.setString(1, empleado.getPuesto());
+            ps3.setString(2, empleado.getFoto());
+            // referencia del empleado que se intenta actualizar
+            ps3.setInt(3, empleado.getIdEmpleado());
+
+            ps1.execute();
+            ps2.execute();
+            ps3.execute();
+
+            con.commit();;
         }
         catch (SQLException sqle)
         {
@@ -312,19 +342,84 @@ public class DAOEmpleado
         return output;
     }
 
-    public void delete(long id,
-                       String token)
+    public boolean delete(String numeroEmpleado,
+                          String token)
     {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        boolean output;
+
+        //comprueba el token
+        output = new TokenValidador().validarToken(token);
+        if (!output)
+            return false;
+
+        Connection con = conexion.getConexion();
+
+        try
+        {
+            con.setAutoCommit(false);
+            
+            String sqlEliminar = "update Persona set estatus=0 where numeroEmpleado=?";
+            
+            PreparedStatement stmt = con.prepareStatement(sqlEliminar);
+            
+            stmt.execute();
+
+            con.commit();
+        }
+        catch (SQLException sqle)
+        {
+            sqle.printStackTrace();
+            output = false;
+            try
+            {
+                con.rollback();
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+        finally
+        {
+            try
+            {
+                con.setAutoCommit(true);
+                con.close();
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+
+        return output;
     }
 
-    
     public static void main(String[] args)
     {
         DAOEmpleado dao = new DAOEmpleado();
+
+        Empleado empleado = new Empleado();
         
-        List<Empleado> lista = dao.getAll("1");
+        empleado.setNombre("esau");
+        empleado.setApellidoPaterno("mtz");
+        empleado.setApellidoMaterno("lpz");
+        empleado.setGenero("h");
+        empleado.setDomicilio("domic");
+        empleado.setTelefono("");
+        empleado.setRfc("");
         
-        System.out.println(lista.toString());
+        
+        Usuario usuario = new Usuario();
+        usuario.setNombreUsuario("user");
+        usuario.setRol("admin");
+        
+        empleado.setUsuario(usuario);
+        
+        empleado.setPuesto("puesto");
+        empleado.setFoto("");
+        
+        
+        dao.save(empleado, "1");
     }
 }
